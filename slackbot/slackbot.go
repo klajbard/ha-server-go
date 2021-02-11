@@ -2,10 +2,14 @@ package slackbot
 
 import (
 	"fmt"
+	"log"
+	"net/http"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 
+	"github.com/PuerkitoBio/goquery"
 	"github.com/slack-go/slack"
 	"github.com/slack-go/slack/slackevents"
 	"github.com/slack-go/slack/socketmode"
@@ -40,9 +44,11 @@ func handleEvents(api *slack.Client, client *socketmode.Client) {
 						re := regexp.MustCompile(`(?i)hestia`)
 						match := re.Match([]byte(strArr[0]))
 						if strArr[0] == fmt.Sprintf("<@%s>", os.Getenv("SLACK_BOT_ID")) || match {
-							_, _, err := api.PostMessage(ev.Channel, slack.MsgOptionText(strings.Join(strArr[1:], " "), false))
+							messageArr := strArr[1:]
+							reply, emoji := messageHandler(messageArr)
+							_, _, err := api.PostMessage(ev.Channel, slack.MsgOptionText(reply, false), slack.MsgOptionIconEmoji(emoji))
 							if err != nil {
-								fmt.Printf("failed posting message: %v", err)
+								log.Printf("Posting message failed: %v", err)
 							}
 						}
 					}
@@ -50,4 +56,54 @@ func handleEvents(api *slack.Client, client *socketmode.Client) {
 			}
 		}
 	}
+}
+
+func messageHandler(strArr []string) (string, string) {
+	reply := ""
+	emoji := ":female-office-worker:"
+	switch strArr[0] {
+	case "covid":
+		infected, dead, cured := getCovidData()
+		reply = fmt.Sprintf("*COVID*\n:biohazard_sign: *%d*\n:skull: *%d*\n:heartpulse: *%d*", infected, dead, cured)
+		emoji = ":mask:"
+	case "help":
+		reply = "Type covid to get latest covid data"
+	default:
+		reply = fmt.Sprintf("Sorry, I dont understand \"_%s_\"", strings.Join(strArr, " "))
+	}
+	return reply, emoji
+}
+
+func getCovidData() (int, int, int) {
+	resp, err := http.Get("https://koronavirus.gov.hu")
+	if err != nil {
+		log.Println(err)
+	}
+
+	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	if err != nil {
+		log.Println(err)
+	}
+
+	infectedPest := getNum(doc.Find("#api-fertozott-pest").Text())
+	infectedVidek := getNum(doc.Find("#api-fertozott-videk").Text())
+	deadPest := getNum(doc.Find("#api-elhunyt-pest").Text())
+	deadVidek := getNum(doc.Find("#api-elhunyt-videk").Text())
+	curedPest := getNum(doc.Find("#api-gyogyult-pest").Text())
+	curedVidek := getNum(doc.Find("#api-gyogyult-videk").Text())
+
+	infected := infectedPest + infectedVidek
+	dead := deadPest + deadVidek
+	cured := curedPest + curedVidek
+	return infected, dead, cured
+}
+
+func getNum(input string) int {
+	trimmed := strings.ReplaceAll(input, " ", "")
+	num, err := strconv.Atoi(trimmed)
+	if err != nil {
+		log.Println(err)
+	}
+
+	return num
 }
