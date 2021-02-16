@@ -61,19 +61,25 @@ var TEMPERATURES = map[string]string{
 	"sensor.mandula_temp":            "Mandula temperature",
 }
 
+var apiBot *slack.Client
+var apiUser *slack.Client
+
 func Run() {
 	botToken := os.Getenv("SLACK_BOT_TOKEN")
+	userToken := os.Getenv("SLACK_OAUTH_TOKEN")
 	appToken := os.Getenv("SLACK_APP_TOKEN")
 
-	api := slack.New(botToken, slack.OptionAppLevelToken(appToken))
-	client := socketmode.New(api)
+	apiBot = slack.New(botToken, slack.OptionAppLevelToken(appToken))
+	apiUser = slack.New(userToken, slack.OptionAppLevelToken(appToken))
 
-	go handleEvents(api, client)
+	client := socketmode.New(apiBot)
+
+	go handleEvents(client)
 
 	client.Run()
 }
 
-func handleEvents(api *slack.Client, client *socketmode.Client) {
+func handleEvents(client *socketmode.Client) {
 	for evt := range client.Events {
 		if evt.Type == socketmode.EventTypeEventsAPI {
 			eventsAPIEvent, ok := evt.Data.(slackevents.EventsAPIEvent)
@@ -83,13 +89,13 @@ func handleEvents(api *slack.Client, client *socketmode.Client) {
 			client.Ack(*evt.Request)
 
 			if eventsAPIEvent.Type == slackevents.CallbackEvent {
-				eventMux(api, eventsAPIEvent)
+				eventMux(eventsAPIEvent)
 			}
 		}
 	}
 }
 
-func eventMux(api *slack.Client, eventsAPIEvent slackevents.EventsAPIEvent) {
+func eventMux(eventsAPIEvent slackevents.EventsAPIEvent) {
 	switch ev := eventsAPIEvent.InnerEvent.Data.(type) {
 	case *slackevents.AppMentionEvent:
 	case *slackevents.MessageEvent:
@@ -100,9 +106,13 @@ func eventMux(api *slack.Client, eventsAPIEvent slackevents.EventsAPIEvent) {
 				messageArr := strArr[1:]
 				reply, emoji := messageMux(messageArr)
 				if reply != "" {
-					_, _, err := api.PostMessage(ev.Channel, slack.MsgOptionText(reply, false), slack.MsgOptionIconEmoji(emoji))
+					_, _, err := apiBot.PostMessage(ev.Channel, slack.MsgOptionText(reply, false), slack.MsgOptionIconEmoji(emoji))
 					if err != nil {
 						log.Printf("Posting message failed: %v", err)
+					}
+					_, _, err = apiUser.DeleteMessage(ev.Channel, ev.TimeStamp)
+					if err != nil {
+						log.Printf("Deleting message failed: %v", err)
 					}
 				}
 			}
