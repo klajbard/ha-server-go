@@ -119,7 +119,7 @@ func messageMux(strArr []string) (string, string) {
 		if len(strArr) < 2 {
 			reply = "Please specify a sensor name: *cons <sensor>*"
 		} else {
-			today := time.Now().Format("20160102")
+			today := time.Now().Format("06.01.02")
 			cons := consumption.OneCons(strArr[1], today)
 			reply = fmt.Sprintf("*%s* today's consumption: *%.2f Wh*", cons.Device, cons.Watt)
 		}
