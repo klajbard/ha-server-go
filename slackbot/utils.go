@@ -1,7 +1,6 @@
 package slackbot
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -9,22 +8,6 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 )
-
-func messageHandler(strArr []string) (string, string) {
-	reply := ""
-	emoji := ":female-office-worker:"
-	switch strArr[0] {
-	case "covid":
-		infected, dead, cured := getCovidData()
-		reply = fmt.Sprintf("*COVID*\n:biohazard_sign: *%d*\n:skull: *%d*\n:heartpulse: *%d*", infected, dead, cured)
-		emoji = ":mask:"
-	case "help":
-		reply = "Type covid to get latest covid data"
-	default:
-		reply = fmt.Sprintf("Sorry, I dont understand \"_%s_\"", strings.Join(strArr, " "))
-	}
-	return reply, emoji
-}
 
 func getCovidData() (int, int, int) {
 	resp, err := http.Get("https://koronavirus.gov.hu")
