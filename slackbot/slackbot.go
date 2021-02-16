@@ -3,6 +3,7 @@ package slackbot
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -98,9 +99,11 @@ func eventMux(api *slack.Client, eventsAPIEvent slackevents.EventsAPIEvent) {
 			if strArr[0] == fmt.Sprintf("<@%s>", os.Getenv("SLACK_BOT_ID")) || match {
 				messageArr := strArr[1:]
 				reply, emoji := messageMux(messageArr)
-				_, _, err := api.PostMessage(ev.Channel, slack.MsgOptionText(reply, false), slack.MsgOptionIconEmoji(emoji))
-				if err != nil {
-					log.Printf("Posting message failed: %v", err)
+				if reply != "" {
+					_, _, err := api.PostMessage(ev.Channel, slack.MsgOptionText(reply, false), slack.MsgOptionIconEmoji(emoji))
+					if err != nil {
+						log.Printf("Posting message failed: %v", err)
+					}
 				}
 			}
 		}
@@ -143,12 +146,28 @@ func messageMux(strArr []string) (string, string) {
 			emoji = ":thermometer:"
 			reply = sb.String()
 		}
+	case "turn":
+		if len(strArr) > 2 {
+			re := regexp.MustCompile(`(?i)o(n|ff)`) // Bot name
+			match := re.Match([]byte(strArr[2]))
+			if !match {
+				reply = "Please specify a sensor name: turn <sensor> *<on/off>*"
+			}
+			state := strings.ToLower(strArr[2])
+			ok := setHassioService("switch."+strArr[1], "switch", "turn_"+state)
+			if ok {
+				reply = fmt.Sprintf("%s is successfully turned to %s", strArr[1], state)
+			} else {
+				reply = "Couldn't set state of sensor."
+			}
+		}
 	case "help":
 		reply = `
-*covid*					current covid data
-*cons <sensor>*	sensor consumption
-*hum*						display humidity
-*temp*					display temperature`
+*covid* - current covid data
+*cons <sensor>* - sensor consumption
+*hum* - display humidity
+*temp* - display temperature
+*turn <sensor> <on/off>* - turn switch on/off`
 	default:
 		reply = fmt.Sprintf("Sorry, I dont understand \"_%s_\"", strings.Join(strArr, " "))
 	}
@@ -175,18 +194,8 @@ func GetAllHumidity() []SensorValue {
 
 func getHassioData(sensor string) string {
 	sensorData := &SensorData{}
-	req, err := http.NewRequest("GET", "http://192.168.1.27:8123/api/states/"+sensor, nil)
-	if err != nil {
-		log.Println(err)
-	}
+	resp := queryHassio("http://192.168.1.27:8123/api/states/"+sensor, "GET", nil)
 
-	req.Header.Set("Authorization", "Bearer "+os.Getenv("HASS_TOKEN"))
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := (&http.Client{}).Do(req)
-	if err != nil {
-		log.Println(err)
-	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
@@ -200,4 +209,32 @@ func getHassioData(sensor string) string {
 	}
 
 	return sensorData.State
+}
+
+func setHassioService(sensor, domain, service string) bool {
+	payload := fmt.Sprintf(`{"entity_id":"%s"}`, sensor)
+	link := "http://192.168.1.27:8123/api/services/" + domain + "/" + service
+
+	resp := queryHassio(link, "POST", strings.NewReader(payload))
+
+	defer resp.Body.Close()
+
+	return resp.StatusCode == 200
+}
+
+func queryHassio(url, method string, payload io.Reader) *http.Response {
+	req, err := http.NewRequest(method, url, payload)
+	if err != nil {
+		log.Println(err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("HASS_TOKEN"))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := (&http.Client{}).Do(req)
+	if err != nil {
+		log.Println(err)
+	}
+
+	return resp
 }
