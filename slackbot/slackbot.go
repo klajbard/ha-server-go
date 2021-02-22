@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"regexp"
 	"strings"
 	"time"
@@ -170,7 +171,16 @@ func messageMux(strArr []string) (string, string) {
 			} else {
 				reply = "Couldn't set state of sensor."
 			}
+			emoji = ":electric_plug:"
 		}
+	case "hautils":
+		_, err := exec.Command("/bin/systemctl", "is-active", "--quiet", "hautils.service").Output()
+		if err != nil {
+			reply = "Ha utils is not running"
+		} else {
+			reply = "Ha utils is running"
+		}
+
 	case "help":
 		reply = `
 *covid* - current covid data
