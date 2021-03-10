@@ -1,97 +1,25 @@
 package slackbot
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"log"
-	"net/http"
 	"os"
 	"os/exec"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
+	"../config"
 	"../consumption"
-	"github.com/PuerkitoBio/goquery"
+	"../handlers"
+	"../utils"
 	"github.com/slack-go/slack"
 	"github.com/slack-go/slack/slackevents"
 	"github.com/slack-go/slack/socketmode"
 )
 
-type SensorData struct {
-	EntityId   string   // `json:"entity_id" bson:"entity_id"`
-	State      string   // `json:"state" bson:"state"`
-	Attributes struct { // `json:"attributes" bson:"attributes"`
-		UnitOfMeasurement string // `json:"unit_of_measurement" bson:"unit_of_measurement"`
-		FriendlyName      string // `json:"friendly_name" bson:"friendly_name"`
-		DeviceClass       string // `json:"device_class" bson:"device_class"`
-	}
-	LastChanged string   // `json:"last_changed" bson:"last_changed"`
-	LastUpdated string   // `json:"last_updated" bson:"last_updated"`
-	Context     struct { // `json:"context" bson:"context"`
-		Id       string // `json:"id" bson:"id"`
-		ParentId string // `json:"device_class" bson:"device_class"`
-		UserId   string // `json:"user_id" bson:"user_id"`
-	}
-}
-
-type SensorValue struct {
-	Name  string
-	Value string
-}
-
-type ArukeresoResult struct {
-	Name  string
-	Price int
-}
-
-var HUMIDITIES = map[string]string{
-	"sensor.xiaomi_airpurifier_humidity": "Purifier humidity",
-	"sensor.xiaomi_humidifier_humidity":  "Humidifier humidity",
-	"sensor.rpi_humidity":                "Raspberry humidity",
-	"sensor.aqara_temp_humidity":         "Aqara bedroom humidity",
-	"sensor.aqara_temp2_humidity":        "Aqara living room humidity",
-	"sensor.aqara_temp3_humidity":        "Aqara balcony humidity",
-	"sensor.mijia_temp_humidity":         "Mijia humidity",
-}
-
-var TEMPERATURES = map[string]string{
-	"sensor.xiaomi_airpurifier_temp": "Purifier temperature",
-	"sensor.xiaomi_humidifier_temp":  "Humidifier temperature",
-	"sensor.rpi_temperature":         "Raspberry temperature",
-	"sensor.aqara_temp_temperature":  "Aqara bedroom temperature",
-	"sensor.aqara_temp2_temperature": "Aqara living room temperature",
-	"sensor.aqara_temp3_temperature": "Aqara balcony temperature",
-	"sensor.mijia_temp_temperature":  "Mijia temperature",
-	"sensor.mandula_temp":            "Mandula temperature",
-}
-
-var ARUKERESO_URLS_CPU = []string{
-	"https://www.arukereso.hu/processzor-c3139/intel/core-i5-10400f-6-core-2-9ghz-lga1200-p558582354/",
-	"https://www.arukereso.hu/processzor-c3139/intel/core-i5-10400-6-core-2-9ghz-lga1200-p558582279/",
-	"https://www.arukereso.hu/processzor-c3139/intel/core-i5-10500-6-core-3-1ghz-lga1200-p558586827/",
-	"https://www.arukereso.hu/processzor-c3139/intel/core-i5-10600k-6-core-4-1ghz-lga1200-p558587868/",
-}
-
-var ARUKERESO_URLS_ALAPLAP = []string{
-	"https://www.arukereso.hu/alaplap-c3128/asrock/b560m-pro4-p633866961",
-}
-
-var apiBot *slack.Client
-var apiUser *slack.Client
-
 func Run() {
-	botToken := os.Getenv("SLACK_BOT_TOKEN")
-	userToken := os.Getenv("SLACK_OAUTH_TOKEN")
-	appToken := os.Getenv("SLACK_APP_TOKEN")
-
-	apiBot = slack.New(botToken, slack.OptionAppLevelToken(appToken))
-	apiUser = slack.New(userToken, slack.OptionAppLevelToken(appToken))
-
-	client := socketmode.New(apiBot)
+	client := socketmode.New(config.ApiBot)
 
 	go handleEvents(client)
 
@@ -122,7 +50,7 @@ func handleEvents(client *socketmode.Client) {
 				} else if value == "covid" {
 					sendCovid(channel)
 				}
-				_, _, err := apiUser.DeleteMessage(channel, timestamp)
+				_, _, err := config.ApiUser.DeleteMessage(channel, timestamp)
 				if err != nil {
 					log.Printf("Deleting message failed: %v", err)
 				}
@@ -157,7 +85,7 @@ func eventMux(eventsAPIEvent slackevents.EventsAPIEvent) {
 				} else {
 					messageMux(messageArr, ev.Channel)
 				}
-				_, _, err := apiUser.DeleteMessage(ev.Channel, ev.TimeStamp)
+				_, _, err := config.ApiUser.DeleteMessage(ev.Channel, ev.TimeStamp)
 				if err != nil {
 					log.Printf("Deleting message failed: %v", err)
 				}
@@ -185,9 +113,9 @@ func messageMux(strArr []string, channel string) {
 	case "temp":
 		sendTemperature(channel)
 	case "turn":
-		handleTurnSwitch(strArr, channel)
+		handlers.TurnSwitch(strArr, channel)
 	case "arukereso":
-		handleArukereso(strArr, channel)
+		handlers.Arukereso(strArr, channel)
 	case "hautils":
 		_, err := exec.Command("/bin/systemctl", "is-active", "--quiet", "hautils.service").Output()
 		if err != nil {
@@ -207,75 +135,10 @@ func messageMux(strArr []string, channel string) {
 		reply = fmt.Sprintf("Sorry, I dont understand \"_%s_\"", strings.Join(strArr, " "))
 	}
 
-	_, _, err := apiBot.PostMessage(channel, slack.MsgOptionText(reply, false), slack.MsgOptionIconEmoji(emoji))
+	_, _, err := config.ApiBot.PostMessage(channel, slack.MsgOptionText(reply, false), slack.MsgOptionIconEmoji(emoji))
 	if err != nil {
 		log.Printf("Posting message failed: %v", err)
 	}
-}
-
-func GetAllTemp() []SensorValue {
-	ret := []SensorValue{}
-	for sensor, name := range TEMPERATURES {
-		ret = append(ret, SensorValue{name, getHassioData(sensor)})
-	}
-
-	return ret
-}
-
-func GetAllHumidity() []SensorValue {
-	ret := []SensorValue{}
-	for sensor, name := range HUMIDITIES {
-		ret = append(ret, SensorValue{name, getHassioData(sensor)})
-	}
-
-	return ret
-}
-
-func getHassioData(sensor string) string {
-	sensorData := &SensorData{}
-	resp := queryHassio("http://192.168.1.27:8123/api/states/"+sensor, "GET", nil)
-
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Println(err)
-	}
-
-	err = json.Unmarshal([]byte(string(body)), sensorData)
-	if err != nil {
-		log.Println(err)
-	}
-
-	return sensorData.State
-}
-
-func setHassioService(sensor, domain, service string) bool {
-	payload := fmt.Sprintf(`{"entity_id":"%s"}`, sensor)
-	link := "http://192.168.1.27:8123/api/services/" + domain + "/" + service
-
-	resp := queryHassio(link, "POST", strings.NewReader(payload))
-
-	defer resp.Body.Close()
-
-	return resp.StatusCode == 200
-}
-
-func queryHassio(url, method string, payload io.Reader) *http.Response {
-	req, err := http.NewRequest(method, url, payload)
-	if err != nil {
-		log.Println(err)
-	}
-
-	req.Header.Set("Authorization", "Bearer "+os.Getenv("HASS_TOKEN"))
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := (&http.Client{}).Do(req)
-	if err != nil {
-		log.Println(err)
-	}
-
-	return resp
 }
 
 func sendBlockMessages(channel string) {
@@ -287,7 +150,7 @@ func sendBlockMessages(channel string) {
 	covidBtn := slack.NewButtonBlockElement("", "covid", covidBtnText)
 	actionBlock := slack.NewActionBlock("", tempBtn, humBtn, covidBtn)
 
-	_, _, err := apiBot.PostMessage(channel, slack.MsgOptionBlocks(actionBlock))
+	_, _, err := config.ApiBot.PostMessage(channel, slack.MsgOptionBlocks(actionBlock))
 	if err != nil {
 		log.Printf("Posting message failed: %v", err)
 	}
@@ -295,26 +158,26 @@ func sendBlockMessages(channel string) {
 
 func sendHumidity(channel string) {
 	var sb strings.Builder
-	hums := GetAllHumidity()
+	hums := handlers.GetAllHumidity()
 	for _, sensor := range hums {
 		sb.WriteString(fmt.Sprintf("*%s*: %s %%\n", sensor.Name, sensor.Value))
 	}
 	emoji := ":droplet:"
 	reply := sb.String()
 
-	postMessage(channel, reply, emoji)
+	utils.PostMessage(channel, reply, emoji)
 }
 
 func sendTemperature(channel string) {
 	var sb strings.Builder
-	hums := GetAllTemp()
+	hums := handlers.GetAllTemp()
 	for _, sensor := range hums {
 		sb.WriteString(fmt.Sprintf("*%s*: %s °C\n", sensor.Name, sensor.Value))
 	}
 	emoji := ":thermometer:"
 	reply := sb.String()
 
-	postMessage(channel, reply, emoji)
+	utils.PostMessage(channel, reply, emoji)
 }
 
 func sendCovid(channel string) {
@@ -322,87 +185,5 @@ func sendCovid(channel string) {
 	reply := fmt.Sprintf("*COVID*\n:biohazard_sign: *%d*\n:skull: *%d*\n:heartpulse: *%d*", infected, dead, cured)
 	emoji := ":mask:"
 
-	postMessage(channel, reply, emoji)
-}
-
-func handleTurnSwitch(strArr []string, channel string) {
-	reply := "Wrong parameters"
-	emoji := ":electric_plug:"
-	if len(strArr) < 2 {
-		postMessage(channel, reply, emoji)
-	}
-	re := regexp.MustCompile(`(?i)o(n|ff)`) // Bot name
-	match := re.Match([]byte(strArr[2]))
-	if !match {
-		reply = "Please specify a sensor name: turn <sensor> *<on/off>*"
-	}
-	state := strings.ToLower(strArr[2])
-	ok := setHassioService("switch."+strArr[1], "switch", "turn_"+state)
-	if ok {
-		reply = fmt.Sprintf("%s is successfully turned to %s", strArr[1], state)
-	} else {
-		reply = "Couldn't set state of sensor."
-	}
-	postMessage(channel, reply, emoji)
-}
-
-func handleArukereso(strArr []string, channel string) {
-	var sb strings.Builder
-
-	reply := "Wrong parameters"
-	emoji := ":desktop_computer:"
-
-	if len(strArr) < 2 {
-		postMessage(channel, reply, emoji)
-	}
-
-	switch strArr[1] {
-	case "proci":
-		for _, url := range ARUKERESO_URLS_CPU {
-			result := handleAKQuery(url)
-			sb.WriteString(fmt.Sprintf("<%s|*%s - %d*>\n", url, result.Name, result.Price))
-		}
-	case "alaplap":
-		for _, url := range ARUKERESO_URLS_ALAPLAP {
-			result := handleAKQuery(url)
-			sb.WriteString(fmt.Sprintf("<%s|*%s - %d*>\n", url, result.Name, result.Price))
-		}
-	}
-	reply = sb.String()
-
-	postMessage(channel, reply, emoji)
-}
-
-func postMessage(channel, reply, emoji string) {
-	_, _, err := apiBot.PostMessage(channel, slack.MsgOptionText(reply, false), slack.MsgOptionIconEmoji(emoji))
-	if err != nil {
-		log.Printf("Posting message failed: %v", err)
-	}
-}
-
-func handleAKQuery(url string) ArukeresoResult {
-	item := ArukeresoResult{}
-	resp, err := http.Get(url)
-
-	if err != nil {
-		log.Println(err)
-		return item
-	}
-
-	doc, err := goquery.NewDocumentFromReader(resp.Body)
-	if err != nil {
-		log.Println(err)
-		return item
-	}
-
-	item.Name = strings.TrimSpace(doc.Find("h1.hidden-xs").Text())
-
-	doc.Find(".optoffer.device-desktop").Each(func(_ int, s *goquery.Selection) {
-		price, _ := s.Find("[itemprop=\"price\"]").Attr("content")
-		priceInt, _ := strconv.Atoi(price)
-		if item.Price == 0 || priceInt < item.Price {
-			item.Price = priceInt
-		}
-	})
-	return item
+	utils.PostMessage(channel, reply, emoji)
 }
