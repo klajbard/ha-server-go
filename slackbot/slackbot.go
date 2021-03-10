@@ -10,10 +10,12 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
 	"../consumption"
+	"github.com/PuerkitoBio/goquery"
 	"github.com/slack-go/slack"
 	"github.com/slack-go/slack/slackevents"
 	"github.com/slack-go/slack/socketmode"
@@ -41,6 +43,11 @@ type SensorValue struct {
 	Value string
 }
 
+type ArukeresoResult struct {
+	Name  string
+	Price int
+}
+
 var HUMIDITIES = map[string]string{
 	"sensor.xiaomi_airpurifier_humidity": "Purifier humidity",
 	"sensor.xiaomi_humidifier_humidity":  "Humidifier humidity",
@@ -60,6 +67,17 @@ var TEMPERATURES = map[string]string{
 	"sensor.aqara_temp3_temperature": "Aqara balcony temperature",
 	"sensor.mijia_temp_temperature":  "Mijia temperature",
 	"sensor.mandula_temp":            "Mandula temperature",
+}
+
+var ARUKERESO_URLS_CPU = []string{
+	"https://www.arukereso.hu/processzor-c3139/intel/core-i5-10400f-6-core-2-9ghz-lga1200-p558582354/",
+	"https://www.arukereso.hu/processzor-c3139/intel/core-i5-10400-6-core-2-9ghz-lga1200-p558582279/",
+	"https://www.arukereso.hu/processzor-c3139/intel/core-i5-10500-6-core-3-1ghz-lga1200-p558586827/",
+	"https://www.arukereso.hu/processzor-c3139/intel/core-i5-10600k-6-core-4-1ghz-lga1200-p558587868/",
+}
+
+var ARUKERESO_URLS_ALAPLAP = []string{
+	"https://www.arukereso.hu/alaplap-c3128/asrock/b560m-pro4-p633866961",
 }
 
 var apiBot *slack.Client
@@ -167,21 +185,9 @@ func messageMux(strArr []string, channel string) {
 	case "temp":
 		sendTemperature(channel)
 	case "turn":
-		if len(strArr) > 2 {
-			re := regexp.MustCompile(`(?i)o(n|ff)`) // Bot name
-			match := re.Match([]byte(strArr[2]))
-			if !match {
-				reply = "Please specify a sensor name: turn <sensor> *<on/off>*"
-			}
-			state := strings.ToLower(strArr[2])
-			ok := setHassioService("switch."+strArr[1], "switch", "turn_"+state)
-			if ok {
-				reply = fmt.Sprintf("%s is successfully turned to %s", strArr[1], state)
-			} else {
-				reply = "Couldn't set state of sensor."
-			}
-			emoji = ":electric_plug:"
-		}
+		handleTurnSwitch(strArr, channel)
+	case "arukereso":
+		handleArukereso(strArr, channel)
 	case "hautils":
 		_, err := exec.Command("/bin/systemctl", "is-active", "--quiet", "hautils.service").Output()
 		if err != nil {
@@ -295,10 +301,8 @@ func sendHumidity(channel string) {
 	}
 	emoji := ":droplet:"
 	reply := sb.String()
-	_, _, err := apiBot.PostMessage(channel, slack.MsgOptionText(reply, false), slack.MsgOptionIconEmoji(emoji))
-	if err != nil {
-		log.Printf("Posting message failed: %v", err)
-	}
+
+	postMessage(channel, reply, emoji)
 }
 
 func sendTemperature(channel string) {
@@ -309,18 +313,96 @@ func sendTemperature(channel string) {
 	}
 	emoji := ":thermometer:"
 	reply := sb.String()
-	_, _, err := apiBot.PostMessage(channel, slack.MsgOptionText(reply, false), slack.MsgOptionIconEmoji(emoji))
-	if err != nil {
-		log.Printf("Posting message failed: %v", err)
-	}
+
+	postMessage(channel, reply, emoji)
 }
 
 func sendCovid(channel string) {
 	infected, dead, cured := getCovidData()
 	reply := fmt.Sprintf("*COVID*\n:biohazard_sign: *%d*\n:skull: *%d*\n:heartpulse: *%d*", infected, dead, cured)
 	emoji := ":mask:"
+
+	postMessage(channel, reply, emoji)
+}
+
+func handleTurnSwitch(strArr []string, channel string) {
+	reply := "Wrong parameters"
+	emoji := ":electric_plug:"
+	if len(strArr) < 2 {
+		postMessage(channel, reply, emoji)
+	}
+	re := regexp.MustCompile(`(?i)o(n|ff)`) // Bot name
+	match := re.Match([]byte(strArr[2]))
+	if !match {
+		reply = "Please specify a sensor name: turn <sensor> *<on/off>*"
+	}
+	state := strings.ToLower(strArr[2])
+	ok := setHassioService("switch."+strArr[1], "switch", "turn_"+state)
+	if ok {
+		reply = fmt.Sprintf("%s is successfully turned to %s", strArr[1], state)
+	} else {
+		reply = "Couldn't set state of sensor."
+	}
+	postMessage(channel, reply, emoji)
+}
+
+func handleArukereso(strArr []string, channel string) {
+	var sb strings.Builder
+
+	reply := "Wrong parameters"
+	emoji := ":desktop_computer:"
+
+	if len(strArr) < 2 {
+		postMessage(channel, reply, emoji)
+	}
+
+	switch strArr[1] {
+	case "proci":
+		for _, url := range ARUKERESO_URLS_CPU {
+			result := handleAKQuery(url)
+			sb.WriteString(fmt.Sprintf("<%s|*%s - %d*>\n", url, result.Name, result.Price))
+		}
+	case "alaplap":
+		for _, url := range ARUKERESO_URLS_ALAPLAP {
+			result := handleAKQuery(url)
+			sb.WriteString(fmt.Sprintf("<%s|*%s - %d*>\n", url, result.Name, result.Price))
+		}
+	}
+	reply = sb.String()
+
+	postMessage(channel, reply, emoji)
+}
+
+func postMessage(channel, reply, emoji string) {
 	_, _, err := apiBot.PostMessage(channel, slack.MsgOptionText(reply, false), slack.MsgOptionIconEmoji(emoji))
 	if err != nil {
 		log.Printf("Posting message failed: %v", err)
 	}
+}
+
+func handleAKQuery(url string) ArukeresoResult {
+	item := ArukeresoResult{}
+	resp, err := http.Get(url)
+
+	if err != nil {
+		log.Println(err)
+		return item
+	}
+
+	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	if err != nil {
+		log.Println(err)
+		return item
+	}
+
+	item.Name = strings.TrimSpace(doc.Find("h1.hidden-xs").Text())
+
+	doc.Find(".optoffer.device-desktop").Each(func(_ int, s *goquery.Selection) {
+		price, _ := s.Find("[itemprop=\"price\"]").Attr("content")
+		priceInt, _ := strconv.Atoi(price)
+		if item.Price == 0 || priceInt < item.Price {
+			item.Price = priceInt
+		}
+	})
+	return item
 }
