@@ -4,15 +4,11 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
 	"regexp"
 	"strings"
-	"time"
 
 	"../config"
-	"../consumption"
 	"../handlers"
-	"../utils"
 	"github.com/slack-go/slack"
 	"github.com/slack-go/slack/slackevents"
 	"github.com/slack-go/slack/socketmode"
@@ -26,6 +22,24 @@ func Run() {
 	client.Run()
 }
 
+func callbackMux(callback slack.InteractionCallback) {
+	timestamp := callback.Container.MessageTs
+	channel := callback.Channel.GroupConversation.Conversation.ID
+	value := callback.ActionCallback.BlockActions[0].Value
+
+	if value == "hum" {
+		handlers.Humidity(channel)
+	} else if value == "temp" {
+		handlers.Temperature(channel)
+	} else if value == "covid" {
+		handlers.Covid(channel)
+	}
+	_, _, err := config.ApiUser.DeleteMessage(channel, timestamp)
+	if err != nil {
+		log.Printf("Deleting message failed: %v", err)
+	}
+}
+
 func handleEvents(client *socketmode.Client) {
 	for evt := range client.Events {
 		switch evt.Type {
@@ -36,26 +50,10 @@ func handleEvents(client *socketmode.Client) {
 				continue
 			}
 
-			timestamp := callback.Container.MessageTs
-			channel := callback.Channel.GroupConversation.Conversation.ID
-			value := callback.ActionCallback.BlockActions[0].Value
-
-			var payload interface{}
-
 			if callback.Type == slack.InteractionTypeBlockActions {
-				if value == "hum" {
-					sendHumidity(channel)
-				} else if value == "temp" {
-					sendTemperature(channel)
-				} else if value == "covid" {
-					sendCovid(channel)
-				}
-				_, _, err := config.ApiUser.DeleteMessage(channel, timestamp)
-				if err != nil {
-					log.Printf("Deleting message failed: %v", err)
-				}
+				callbackMux(callback)
 			}
-			client.Ack(*evt.Request, payload)
+			client.Ack(*evt.Request)
 
 		case socketmode.EventTypeEventsAPI:
 			eventsAPIEvent, ok := evt.Data.(slackevents.EventsAPIEvent)
@@ -80,11 +78,7 @@ func eventMux(eventsAPIEvent slackevents.EventsAPIEvent) {
 			match := re.Match([]byte(strArr[0]))
 			if strArr[0] == fmt.Sprintf("<@%s>", os.Getenv("SLACK_BOT_ID")) || match {
 				messageArr := strArr[1:]
-				if messageArr[0] == "commands" {
-					sendBlockMessages(ev.Channel)
-				} else {
-					messageMux(messageArr, ev.Channel)
-				}
+				messageMux(messageArr, ev.Channel)
 				_, _, err := config.ApiUser.DeleteMessage(ev.Channel, ev.TimeStamp)
 				if err != nil {
 					log.Printf("Deleting message failed: %v", err)
@@ -95,49 +89,27 @@ func eventMux(eventsAPIEvent slackevents.EventsAPIEvent) {
 }
 
 func messageMux(strArr []string, channel string) {
-	reply := ""
-	emoji := ":female-office-worker:"
 	switch strArr[0] {
 	case "cons":
-		if len(strArr) < 2 {
-			reply = "Please specify a sensor name: *cons <sensor>*"
-		} else {
-			today := time.Now().Format("06.01.02")
-			cons := consumption.OneCons(strArr[1], today)
-			reply = fmt.Sprintf("*%s* today's consumption: *%.2f Wh*", cons.Device, cons.Watt)
-		}
+		handlers.Consumption(strArr, channel)
 	case "covid":
-		sendCovid(channel)
+		handlers.Covid(channel)
 	case "hum":
-		sendHumidity(channel)
+		handlers.Humidity(channel)
 	case "temp":
-		sendTemperature(channel)
+		handlers.Temperature(channel)
 	case "turn":
 		handlers.TurnSwitch(strArr, channel)
 	case "arukereso":
 		handlers.Arukereso(strArr, channel)
 	case "hautils":
-		_, err := exec.Command("/bin/systemctl", "is-active", "--quiet", "hautils.service").Output()
-		if err != nil {
-			reply = "Ha utils is not running"
-		} else {
-			reply = "Ha utils is running"
-		}
-
+		handlers.IsRunning(channel)
 	case "help":
-		reply = `
-*covid* - current covid data
-*cons <sensor>* - sensor consumption
-*hum* - display humidity
-*temp* - display temperature
-*turn <sensor> <on/off>* - turn switch on/off`
+		handlers.Help(channel)
+	case "commands":
+		sendBlockMessages(channel)
 	default:
-		reply = fmt.Sprintf("Sorry, I dont understand \"_%s_\"", strings.Join(strArr, " "))
-	}
-
-	_, _, err := config.ApiBot.PostMessage(channel, slack.MsgOptionText(reply, false), slack.MsgOptionIconEmoji(emoji))
-	if err != nil {
-		log.Printf("Posting message failed: %v", err)
+		handlers.Default(strArr, channel)
 	}
 }
 
@@ -154,36 +126,4 @@ func sendBlockMessages(channel string) {
 	if err != nil {
 		log.Printf("Posting message failed: %v", err)
 	}
-}
-
-func sendHumidity(channel string) {
-	var sb strings.Builder
-	hums := handlers.GetAllHumidity()
-	for _, sensor := range hums {
-		sb.WriteString(fmt.Sprintf("*%s*: %s %%\n", sensor.Name, sensor.Value))
-	}
-	emoji := ":droplet:"
-	reply := sb.String()
-
-	utils.PostMessage(channel, reply, emoji)
-}
-
-func sendTemperature(channel string) {
-	var sb strings.Builder
-	hums := handlers.GetAllTemp()
-	for _, sensor := range hums {
-		sb.WriteString(fmt.Sprintf("*%s*: %s °C\n", sensor.Name, sensor.Value))
-	}
-	emoji := ":thermometer:"
-	reply := sb.String()
-
-	utils.PostMessage(channel, reply, emoji)
-}
-
-func sendCovid(channel string) {
-	infected, dead, cured := getCovidData()
-	reply := fmt.Sprintf("*COVID*\n:biohazard_sign: *%d*\n:skull: *%d*\n:heartpulse: *%d*", infected, dead, cured)
-	emoji := ":mask:"
-
-	utils.PostMessage(channel, reply, emoji)
 }

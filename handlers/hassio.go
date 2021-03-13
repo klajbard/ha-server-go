@@ -10,7 +10,9 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"time"
 
+	"../consumption"
 	"../types"
 	"../utils"
 )
@@ -57,7 +59,43 @@ func TurnSwitch(strArr []string, channel string) {
 	utils.PostMessage(channel, reply, emoji)
 }
 
-func GetAllTemp() []types.SensorValue {
+func Humidity(channel string) {
+	var sb strings.Builder
+	hums := getAllHumidity()
+	for _, sensor := range hums {
+		sb.WriteString(fmt.Sprintf("*%s*: %s %%\n", sensor.Name, sensor.Value))
+	}
+	emoji := ":droplet:"
+	reply := sb.String()
+
+	utils.PostMessage(channel, reply, emoji)
+}
+
+func Temperature(channel string) {
+	var sb strings.Builder
+	hums := getAllTemp()
+	for _, sensor := range hums {
+		sb.WriteString(fmt.Sprintf("*%s*: %s °C\n", sensor.Name, sensor.Value))
+	}
+	emoji := ":thermometer:"
+	reply := sb.String()
+
+	utils.PostMessage(channel, reply, emoji)
+}
+
+func Consumption(strArr []string, channel string) {
+	emoji := ":electric_plug:"
+	reply := "Please specify a sensor name: *cons <sensor>*"
+	if len(strArr) > 1 {
+		today := time.Now().Format("06.01.02")
+		cons := consumption.OneCons(strArr[1], today)
+		reply = fmt.Sprintf("*%s* today's consumption: *%.2f Wh*", cons.Device, cons.Watt)
+	}
+
+	utils.PostMessage(channel, reply, emoji)
+}
+
+func getAllTemp() []types.SensorValue {
 	ret := []types.SensorValue{}
 	for sensor, name := range TEMPERATURES {
 		ret = append(ret, types.SensorValue{Name: name, Value: getHassioData(sensor)})
@@ -66,7 +104,7 @@ func GetAllTemp() []types.SensorValue {
 	return ret
 }
 
-func GetAllHumidity() []types.SensorValue {
+func getAllHumidity() []types.SensorValue {
 	ret := []types.SensorValue{}
 	for sensor, name := range HUMIDITIES {
 		ret = append(ret, types.SensorValue{Name: name, Value: getHassioData(sensor)})
