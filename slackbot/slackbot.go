@@ -7,15 +7,23 @@ import (
 	"regexp"
 	"strings"
 
-	"../config"
-	"../handlers"
 	"github.com/slack-go/slack"
 	"github.com/slack-go/slack/slackevents"
 	"github.com/slack-go/slack/socketmode"
 )
 
+var ApiBot *slack.Client
+var ApiUser *slack.Client
+
 func Run() {
-	client := socketmode.New(config.ApiBot)
+	botToken := os.Getenv("SLACK_BOT_TOKEN")
+	userToken := os.Getenv("SLACK_OAUTH_TOKEN")
+	appToken := os.Getenv("SLACK_APP_TOKEN")
+
+	ApiBot = slack.New(botToken, slack.OptionAppLevelToken(appToken))
+	ApiUser = slack.New(userToken, slack.OptionAppLevelToken(appToken))
+
+	client := socketmode.New(ApiBot)
 
 	go handleEvents(client)
 
@@ -28,13 +36,13 @@ func callbackMux(callback slack.InteractionCallback) {
 	value := callback.ActionCallback.BlockActions[0].Value
 
 	if value == "hum" {
-		handlers.Humidity(channel)
+		Humidity(channel)
 	} else if value == "temp" {
-		handlers.Temperature(channel)
+		Temperature(channel)
 	} else if value == "covid" {
-		handlers.Covid(channel)
+		Covid(channel)
 	}
-	_, _, err := config.ApiUser.DeleteMessage(channel, timestamp)
+	_, _, err := ApiUser.DeleteMessage(channel, timestamp)
 	if err != nil {
 		log.Printf("Deleting message failed: %v", err)
 	}
@@ -79,7 +87,7 @@ func eventMux(eventsAPIEvent slackevents.EventsAPIEvent) {
 			if strArr[0] == fmt.Sprintf("<@%s>", os.Getenv("SLACK_BOT_ID")) || match {
 				messageArr := strArr[1:]
 				messageMux(messageArr, ev.Channel)
-				_, _, err := config.ApiUser.DeleteMessage(ev.Channel, ev.TimeStamp)
+				_, _, err := ApiUser.DeleteMessage(ev.Channel, ev.TimeStamp)
 				if err != nil {
 					log.Printf("Deleting message failed: %v", err)
 				}
@@ -91,25 +99,25 @@ func eventMux(eventsAPIEvent slackevents.EventsAPIEvent) {
 func messageMux(strArr []string, channel string) {
 	switch strArr[0] {
 	case "cons":
-		handlers.Consumption(strArr, channel)
+		Consumption(strArr, channel)
 	case "covid":
-		handlers.Covid(channel)
+		Covid(channel)
 	case "hum":
-		handlers.Humidity(channel)
+		Humidity(channel)
 	case "temp":
-		handlers.Temperature(channel)
+		Temperature(channel)
 	case "turn":
-		handlers.TurnSwitch(strArr, channel)
+		TurnSwitch(strArr, channel)
 	case "arukereso":
-		handlers.Arukereso(strArr, channel)
+		Arukereso(strArr, channel)
 	case "hautils":
-		handlers.IsRunning(channel)
+		IsRunning(channel)
 	case "help":
-		handlers.Help(channel)
+		Help(channel)
 	case "commands":
 		sendBlockMessages(channel)
 	default:
-		handlers.Default(strArr, channel)
+		Default(strArr, channel)
 	}
 }
 
@@ -122,7 +130,7 @@ func sendBlockMessages(channel string) {
 	covidBtn := slack.NewButtonBlockElement("", "covid", covidBtnText)
 	actionBlock := slack.NewActionBlock("", tempBtn, humBtn, covidBtn)
 
-	_, _, err := config.ApiBot.PostMessage(channel, slack.MsgOptionBlocks(actionBlock))
+	_, _, err := ApiBot.PostMessage(channel, slack.MsgOptionBlocks(actionBlock))
 	if err != nil {
 		log.Printf("Posting message failed: %v", err)
 	}

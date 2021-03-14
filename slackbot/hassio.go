@@ -1,4 +1,4 @@
-package handlers
+package slackbot
 
 import (
 	"encoding/json"
@@ -12,37 +12,16 @@ import (
 	"strings"
 	"time"
 
+	"../consts"
 	"../consumption"
 	"../types"
-	"../utils"
 )
-
-var HUMIDITIES = map[string]string{
-	"sensor.xiaomi_airpurifier_humidity": "Purifier humidity",
-	"sensor.xiaomi_humidifier_humidity":  "Humidifier humidity",
-	"sensor.rpi_humidity":                "Raspberry humidity",
-	"sensor.aqara_temp_humidity":         "Aqara bedroom humidity",
-	"sensor.aqara_temp2_humidity":        "Aqara living room humidity",
-	"sensor.aqara_temp3_humidity":        "Aqara balcony humidity",
-	"sensor.mijia_temp_humidity":         "Mijia humidity",
-}
-
-var TEMPERATURES = map[string]string{
-	"sensor.xiaomi_airpurifier_temp": "Purifier temperature",
-	"sensor.xiaomi_humidifier_temp":  "Humidifier temperature",
-	"sensor.rpi_temperature":         "Raspberry temperature",
-	"sensor.aqara_temp_temperature":  "Aqara bedroom temperature",
-	"sensor.aqara_temp2_temperature": "Aqara living room temperature",
-	"sensor.aqara_temp3_temperature": "Aqara balcony temperature",
-	"sensor.mijia_temp_temperature":  "Mijia temperature",
-	"sensor.mandula_temp":            "Mandula temperature",
-}
 
 func TurnSwitch(strArr []string, channel string) {
 	reply := "Wrong parameters"
 	emoji := ":electric_plug:"
 	if len(strArr) < 2 {
-		utils.PostMessage(channel, reply, emoji)
+		PostMessage(channel, reply, emoji)
 	}
 	re := regexp.MustCompile(`(?i)o(n|ff)`) // Bot name
 	match := re.Match([]byte(strArr[2]))
@@ -56,7 +35,7 @@ func TurnSwitch(strArr []string, channel string) {
 	} else {
 		reply = "Couldn't set state of sensor."
 	}
-	utils.PostMessage(channel, reply, emoji)
+	PostMessage(channel, reply, emoji)
 }
 
 func Humidity(channel string) {
@@ -68,7 +47,7 @@ func Humidity(channel string) {
 	emoji := ":droplet:"
 	reply := sb.String()
 
-	utils.PostMessage(channel, reply, emoji)
+	PostMessage(channel, reply, emoji)
 }
 
 func Temperature(channel string) {
@@ -80,7 +59,7 @@ func Temperature(channel string) {
 	emoji := ":thermometer:"
 	reply := sb.String()
 
-	utils.PostMessage(channel, reply, emoji)
+	PostMessage(channel, reply, emoji)
 }
 
 func Consumption(strArr []string, channel string) {
@@ -92,12 +71,12 @@ func Consumption(strArr []string, channel string) {
 		reply = fmt.Sprintf("*%s* today's consumption: *%.2f Wh*", cons.Device, cons.Watt)
 	}
 
-	utils.PostMessage(channel, reply, emoji)
+	PostMessage(channel, reply, emoji)
 }
 
 func getAllTemp() []types.SensorValue {
 	ret := []types.SensorValue{}
-	for sensor, name := range TEMPERATURES {
+	for sensor, name := range consts.TEMPERATURES {
 		ret = append(ret, types.SensorValue{Name: name, Value: getHassioData(sensor)})
 	}
 
@@ -106,7 +85,7 @@ func getAllTemp() []types.SensorValue {
 
 func getAllHumidity() []types.SensorValue {
 	ret := []types.SensorValue{}
-	for sensor, name := range HUMIDITIES {
+	for sensor, name := range consts.HUMIDITIES {
 		ret = append(ret, types.SensorValue{Name: name, Value: getHassioData(sensor)})
 	}
 

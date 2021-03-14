@@ -1,4 +1,4 @@
-package handlers
+package slackbot
 
 import (
 	"fmt"
@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"../types"
-	"../utils"
 	"github.com/PuerkitoBio/goquery"
 )
 
@@ -30,7 +29,7 @@ func Arukereso(strArr []string, channel string) {
 	emoji := ":desktop_computer:"
 
 	if len(strArr) < 2 {
-		utils.PostMessage(channel, reply, emoji)
+		PostMessage(channel, reply, emoji)
 	}
 
 	switch strArr[1] {
@@ -47,7 +46,7 @@ func Arukereso(strArr []string, channel string) {
 	}
 	reply = sb.String()
 
-	utils.PostMessage(channel, reply, emoji)
+	PostMessage(channel, reply, emoji)
 }
 
 func queryAK(url string) types.ArukeresoResult {

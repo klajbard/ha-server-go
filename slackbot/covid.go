@@ -1,4 +1,4 @@
-package handlers
+package slackbot
 
 import (
 	"fmt"
@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"strings"
 
-	"../utils"
 	"github.com/PuerkitoBio/goquery"
 )
 
@@ -16,7 +15,7 @@ func Covid(channel string) {
 	reply := fmt.Sprintf("*COVID*\n:biohazard_sign: *%d*\n:skull: *%d*\n:heartpulse: *%d*", infected, dead, cured)
 	emoji := ":mask:"
 
-	utils.PostMessage(channel, reply, emoji)
+	PostMessage(channel, reply, emoji)
 }
 
 func getCovidData() (int, int, int) {
