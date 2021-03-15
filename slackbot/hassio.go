@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"../consts"
+	"../config"
 	"../consumption"
 	"../types"
 )
@@ -40,7 +40,7 @@ func TurnSwitch(strArr []string, channel string) {
 
 func Humidity(channel string) {
 	var sb strings.Builder
-	hums := getAllHumidity()
+	hums := getSensorData("humidity")
 	for _, sensor := range hums {
 		sb.WriteString(fmt.Sprintf("*%s*: %s %%\n", sensor.Name, sensor.Value))
 	}
@@ -52,7 +52,7 @@ func Humidity(channel string) {
 
 func Temperature(channel string) {
 	var sb strings.Builder
-	hums := getAllTemp()
+	hums := getSensorData("temperature")
 	for _, sensor := range hums {
 		sb.WriteString(fmt.Sprintf("*%s*: %s °C\n", sensor.Name, sensor.Value))
 	}
@@ -74,19 +74,14 @@ func Consumption(strArr []string, channel string) {
 	PostMessage(channel, reply, emoji)
 }
 
-func getAllTemp() []types.SensorValue {
+func getSensorData(sensorType string) []types.SensorValue {
 	ret := []types.SensorValue{}
-	for sensor, name := range consts.TEMPERATURES {
-		ret = append(ret, types.SensorValue{Name: name, Value: getHassioData(sensor)})
-	}
-
-	return ret
-}
-
-func getAllHumidity() []types.SensorValue {
-	ret := []types.SensorValue{}
-	for sensor, name := range consts.HUMIDITIES {
-		ret = append(ret, types.SensorValue{Name: name, Value: getHassioData(sensor)})
+	for _, sensorList := range config.Conf.Hassio.Sensors {
+		if sensorList.Type == sensorType {
+			for _, sensor := range sensorList.List {
+				ret = append(ret, types.SensorValue{Name: sensor.Name, Value: getHassioData(sensor.Id)})
+			}
+		}
 	}
 
 	return ret

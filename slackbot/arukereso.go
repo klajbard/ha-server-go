@@ -7,20 +7,10 @@ import (
 	"strconv"
 	"strings"
 
+	"../config"
 	"../types"
 	"github.com/PuerkitoBio/goquery"
 )
-
-var ARUKERESO_URLS_CPU = []string{
-	"https://www.arukereso.hu/processzor-c3139/intel/core-i5-10400f-6-core-2-9ghz-lga1200-p558582354/",
-	"https://www.arukereso.hu/processzor-c3139/intel/core-i5-10400-6-core-2-9ghz-lga1200-p558582279/",
-	"https://www.arukereso.hu/processzor-c3139/intel/core-i5-10500-6-core-3-1ghz-lga1200-p558586827/",
-	"https://www.arukereso.hu/processzor-c3139/intel/core-i5-10600k-6-core-4-1ghz-lga1200-p558587868/",
-}
-
-var ARUKERESO_URLS_ALAPLAP = []string{
-	"https://www.arukereso.hu/alaplap-c3128/asrock/b560m-pro4-p633866961",
-}
 
 func Arukereso(strArr []string, channel string) {
 	var sb strings.Builder
@@ -32,21 +22,19 @@ func Arukereso(strArr []string, channel string) {
 		PostMessage(channel, reply, emoji)
 	}
 
-	switch strArr[1] {
-	case "proci":
-		for _, url := range ARUKERESO_URLS_CPU {
-			result := queryAK(url)
-			sb.WriteString(fmt.Sprintf("<%s|*%s - %d*>\n", url, result.Name, result.Price))
-		}
-	case "alaplap":
-		for _, url := range ARUKERESO_URLS_ALAPLAP {
-			result := queryAK(url)
-			sb.WriteString(fmt.Sprintf("<%s|*%s - %d*>\n", url, result.Name, result.Price))
+	for _, item := range config.Conf.Arukereso {
+		if item.Name == strArr[1] {
+			for _, url := range item.Urls {
+				result := queryAK(url)
+				sb.WriteString(fmt.Sprintf("<%s|*%s - %d*>\n", url, result.Name, result.Price))
+			}
 		}
 	}
-	reply = sb.String()
 
-	PostMessage(channel, reply, emoji)
+	if sb.Len() > 0 {
+		reply = sb.String()
+		PostMessage(channel, reply, emoji)
+	}
 }
 
 func queryAK(url string) types.ArukeresoResult {
