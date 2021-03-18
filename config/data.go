@@ -9,8 +9,9 @@ import (
 )
 
 type Configuration struct {
-	Arukereso []AKItem     `yaml:"arukereso"`
-	Hassio    HassioConfig `yaml:"hassio"`
+	Arukereso     []AKItem     `yaml:"arukereso"`
+	Hassio        HassioConfig `yaml:"hassio"`
+	ScraperConfig string       `yaml:"scraperconfig"`
 }
 
 type AKItem struct {

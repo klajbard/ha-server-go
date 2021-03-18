@@ -2,18 +2,23 @@ package slackbot
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"regexp"
 	"strings"
 
+	"../config"
+	"../hass"
 	"github.com/slack-go/slack"
 	"github.com/slack-go/slack/slackevents"
 	"github.com/slack-go/slack/socketmode"
+	"gopkg.in/yaml.v2"
 )
 
 var ApiBot *slack.Client
 var ApiUser *slack.Client
+var conf *hass.Configuration
 
 func Run() {
 	botToken := os.Getenv("SLACK_BOT_TOKEN")
@@ -30,17 +35,31 @@ func Run() {
 	client.Run()
 }
 
+func writeToFile() {
+	output, err := yaml.Marshal(conf)
+
+	if err != nil {
+		log.Println(err)
+	}
+
+	err = ioutil.WriteFile(config.Conf.ScraperConfig, output, 0)
+
+	if err != nil {
+		log.Println(err)
+	}
+}
+
 func callbackMux(callback slack.InteractionCallback) {
 	timestamp := callback.Container.MessageTs
 	channel := callback.Channel.GroupConversation.Conversation.ID
 	value := callback.ActionCallback.BlockActions[0].Value
+	block := callback.ActionCallback.BlockActions[0].BlockID
 
-	if value == "hum" {
-		Humidity(channel)
-	} else if value == "temp" {
-		Temperature(channel)
-	} else if value == "covid" {
-		Covid(channel)
+	switch block {
+	case "scraper":
+		handleScraperBlock(value)
+	case "hassio":
+		handleHassioBlock(value, channel)
 	}
 	_, _, err := ApiUser.DeleteMessage(channel, timestamp)
 	if err != nil {
@@ -115,23 +134,10 @@ func messageMux(strArr []string, channel string) {
 	case "help":
 		Help(channel)
 	case "commands":
-		sendBlockMessages(channel)
+		sendHassioMessage(channel)
+	case "scraper":
+		sendScraperMessage(channel)
 	default:
 		Default(strArr, channel)
-	}
-}
-
-func sendBlockMessages(channel string) {
-	tempBtnText := slack.NewTextBlockObject("plain_text", "Temperature", false, false)
-	humBtnText := slack.NewTextBlockObject("plain_text", "Humidity", false, false)
-	covidBtnText := slack.NewTextBlockObject("plain_text", "Covid", false, false)
-	tempBtn := slack.NewButtonBlockElement("", "temp", tempBtnText)
-	humBtn := slack.NewButtonBlockElement("", "hum", humBtnText)
-	covidBtn := slack.NewButtonBlockElement("", "covid", covidBtnText)
-	actionBlock := slack.NewActionBlock("", tempBtn, humBtn, covidBtn)
-
-	_, _, err := ApiBot.PostMessage(channel, slack.MsgOptionBlocks(actionBlock))
-	if err != nil {
-		log.Printf("Posting message failed: %v", err)
 	}
 }
