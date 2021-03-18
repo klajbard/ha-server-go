@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 
+	"../config"
 	"gopkg.in/yaml.v2"
 )
 
@@ -75,7 +76,7 @@ type EnableConfig struct {
 	Btc          bool `yaml:"btc"`
 }
 
-var cfg = flag.String("hagoconf", "/home/klajbar/projects/ha-go/config.yaml", "config file path")
+var cfg = flag.String("hagoconf", config.Conf.ScraperConfig, "config file path")
 
 func Get() *Configuration {
 	var c *Configuration
