@@ -1,9 +1,10 @@
 package slackbot
 
 import (
-	"fmt"
+	"log"
 	"os/exec"
-	"strings"
+
+	"github.com/slack-go/slack"
 )
 
 func IsRunning() bool {
@@ -37,9 +38,27 @@ func Help(channel string) {
 	PostMessage(channel, reply, emoji)
 }
 
-func Default(strArr []string, channel string) {
-	reply := fmt.Sprintf("Sorry, I dont understand \"_%s_\"", strings.Join(strArr, " "))
-	emoji := ":female-office-worker:"
+func SendEmpty(channel string) {
+	statusText := slack.NewTextBlockObject("plain_text", "Available commands", false, false)
+	headerSection := slack.NewSectionBlock(statusText, nil, nil)
 
-	PostMessage(channel, reply, emoji)
+	btncovid := getSimpleButton("covid")
+	btnhassio := getSimpleButton("hassio")
+	btnhautils := getSimpleButton("hautils")
+	btnhum := getSimpleButton("hum")
+	btnscraper := getSimpleButton("scraper")
+	btntemp := getSimpleButton("temp")
+	btncancel := getSimpleButton("cancel")
+	actionBlock := slack.NewActionBlock("commands", btncancel, btncovid, btnhassio, btnhautils, btnhum, btnscraper, btntemp)
+
+	_, _, err := ApiBot.PostMessage(channel, slack.MsgOptionBlocks(headerSection, actionBlock), slack.MsgOptionIconEmoji(":female-office-worker:"))
+	if err != nil {
+		log.Printf("Posting message failed: %v", err)
+	}
+}
+
+func getSimpleButton(text string) *slack.ButtonBlockElement {
+	btnText := slack.NewTextBlockObject("plain_text", text, false, false)
+	btn := slack.NewButtonBlockElement("", text, btnText)
+	return btn
 }

@@ -72,7 +72,15 @@ func callbackMux(callback slack.InteractionCallback) {
 	case "hassio":
 		handleHassioBlock(value, channel)
 		removeMessage(channel, timestamp)
+	case "commands":
+		if value == "cancel" {
+			removeMessage(channel, timestamp)
+			return
+		}
+		messageMux([]string{value}, channel)
+		removeMessage(channel, timestamp)
 	}
+
 }
 
 func handleEvents(client *socketmode.Client) {
@@ -108,15 +116,19 @@ func eventMux(eventsAPIEvent slackevents.EventsAPIEvent) {
 	switch ev := eventsAPIEvent.InnerEvent.Data.(type) {
 	case *slackevents.AppMentionEvent:
 	case *slackevents.MessageEvent:
-		if strArr := strings.Split(ev.Text, " "); len(strArr) > 1 {
+		if strArr := strings.Split(ev.Text, " "); len(strArr) >= 1 {
 			re := regexp.MustCompile(`(?i)athena`) // Bot name
 			match := re.Match([]byte(strArr[0]))
 			if strArr[0] == fmt.Sprintf("<@%s>", os.Getenv("SLACK_BOT_ID")) || match {
-				messageArr := strArr[1:]
-				messageMux(messageArr, ev.Channel)
-				_, _, err := ApiUser.DeleteMessage(ev.Channel, ev.TimeStamp)
-				if err != nil {
-					log.Printf("Deleting message failed: %v", err)
+				if len(strArr) == 1 {
+					SendEmpty(ev.Channel)
+				} else {
+					messageArr := strArr[1:]
+					messageMux(messageArr, ev.Channel)
+					_, _, err := ApiUser.DeleteMessage(ev.Channel, ev.TimeStamp)
+					if err != nil {
+						log.Printf("Deleting message failed: %v", err)
+					}
 				}
 			}
 		}
@@ -146,6 +158,6 @@ func messageMux(strArr []string, channel string) {
 	case "turn":
 		TurnSwitch(strArr, channel)
 	default:
-		Default(strArr, channel)
+		SendEmpty(channel)
 	}
 }
