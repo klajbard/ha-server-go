@@ -44,13 +44,12 @@ func handleScraperBlock(value string) {
 }
 
 func sendScraperMessage(channel string) {
-	var status string
+	status := ":red_circle: Hautils is not running"
 	conf = hass.Get()
 
 	if IsRunning() {
-		status = fmt.Sprintf(":green_circle: Hautils is running")
+		status = ":large_green_circle: Hautils is running"
 	}
-	status = fmt.Sprintf(":red_circle: Hautils is not running")
 
 	statusText := slack.NewTextBlockObject("plain_text", status, false, false)
 	statusSection := slack.NewSectionBlock(statusText, nil, nil)
@@ -70,7 +69,7 @@ func sendScraperMessage(channel string) {
 	btnBtc := getButton("Btc", conf.Enable.Btc)
 	actionBlock := slack.NewActionBlock("scraper", btnBestbuy, btnStockwatcher, btnMarketplace, btnSteamgifts, btnDht, btnArukereso, btnCovid, btnBumphva, btnFuel, btnNcore, btnFixerio, btnAwscost, btnBtc)
 
-	btnText := slack.NewTextBlockObject("plain_text", "~ Done ~", false, false)
+	btnText := slack.NewTextBlockObject("plain_text", ":white_check_mark: Done :white_check_mark:", false, false)
 	btn := slack.NewButtonBlockElement("", "done", btnText)
 	btnBlock := slack.NewActionBlock("hassio", btn)
 
@@ -80,8 +79,12 @@ func sendScraperMessage(channel string) {
 	}
 }
 
-func getButton(text string, value bool) *slack.ButtonBlockElement {
-	displayText := fmt.Sprintf("%s: %t", text, value)
+func getButton(text string, checked bool) *slack.ButtonBlockElement {
+	icon := ":red_circle:"
+	if checked {
+		icon = ":large_green_circle:"
+	}
+	displayText := fmt.Sprintf("%s %s", icon, text)
 	btnText := slack.NewTextBlockObject("plain_text", displayText, false, false)
 	btn := slack.NewButtonBlockElement("", text, btnText)
 	return btn
