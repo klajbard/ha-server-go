@@ -44,7 +44,16 @@ func handleScraperBlock(value string) {
 }
 
 func sendScraperMessage(channel string) {
+	var status string
 	conf = hass.Get()
+
+	if IsRunning() {
+		status = fmt.Sprintf(":green_circle: Hautils is running")
+	}
+	status = fmt.Sprintf(":red_circle: Hautils is not running")
+
+	statusText := slack.NewTextBlockObject("plain_text", status, false, false)
+	statusSection := slack.NewSectionBlock(statusText, nil, nil)
 
 	btnBestbuy := getButton("Bestbuy", conf.Enable.Bestbuy)
 	btnStockwatcher := getButton("Stockwatcher", conf.Enable.Stockwatcher)
@@ -65,7 +74,7 @@ func sendScraperMessage(channel string) {
 	btn := slack.NewButtonBlockElement("", "done", btnText)
 	btnBlock := slack.NewActionBlock("hassio", btn)
 
-	_, _, err := ApiBot.PostMessage(channel, slack.MsgOptionBlocks(actionBlock, btnBlock), slack.MsgOptionIconEmoji(":construction_worker:"))
+	_, _, err := ApiBot.PostMessage(channel, slack.MsgOptionBlocks(statusSection, actionBlock, btnBlock), slack.MsgOptionIconEmoji(":construction_worker:"))
 	if err != nil {
 		log.Printf("Posting message failed: %v", err)
 	}

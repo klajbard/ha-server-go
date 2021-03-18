@@ -6,11 +6,15 @@ import (
 	"strings"
 )
 
-func IsRunning(channel string) {
+func IsRunning() bool {
+	_, err := exec.Command("/bin/systemctl", "is-active", "--quiet", "hautils.service").Output()
+	return err == nil
+}
+
+func SendIsRunning(channel string) {
 	reply := "Ha utils is running"
 	emoji := ":female-office-worker:"
-	_, err := exec.Command("/bin/systemctl", "is-active", "--quiet", "hautils.service").Output()
-	if err != nil {
+	if !IsRunning() {
 		reply = "Ha utils is not running"
 	}
 

@@ -134,7 +134,7 @@ func messageMux(strArr []string, channel string) {
 	case "hassio":
 		sendHassioMessage(channel)
 	case "hautils":
-		IsRunning(channel)
+		SendIsRunning(channel)
 	case "help":
 		Help(channel)
 	case "hum":
