@@ -125,10 +125,10 @@ func eventMux(eventsAPIEvent slackevents.EventsAPIEvent) {
 				} else {
 					messageArr := strArr[1:]
 					messageMux(messageArr, ev.Channel)
-					_, _, err := ApiUser.DeleteMessage(ev.Channel, ev.TimeStamp)
-					if err != nil {
-						log.Printf("Deleting message failed: %v", err)
-					}
+				}
+				_, _, err := ApiUser.DeleteMessage(ev.Channel, ev.TimeStamp)
+				if err != nil {
+					log.Printf("Deleting message failed: %v", err)
 				}
 			}
 		}
