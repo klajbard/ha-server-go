@@ -125,26 +125,26 @@ func eventMux(eventsAPIEvent slackevents.EventsAPIEvent) {
 
 func messageMux(strArr []string, channel string) {
 	switch strArr[0] {
+	case "arukereso":
+		Arukereso(strArr, channel)
 	case "cons":
 		Consumption(strArr, channel)
 	case "covid":
 		Covid(channel)
-	case "hum":
-		Humidity(channel)
-	case "temp":
-		Temperature(channel)
-	case "turn":
-		TurnSwitch(strArr, channel)
-	case "arukereso":
-		Arukereso(strArr, channel)
+	case "hassio":
+		sendHassioMessage(channel)
 	case "hautils":
 		IsRunning(channel)
 	case "help":
 		Help(channel)
-	case "commands":
-		sendHassioMessage(channel)
+	case "hum":
+		Humidity(channel)
 	case "scraper":
 		sendScraperMessage(channel)
+	case "temp":
+		Temperature(channel)
+	case "turn":
+		TurnSwitch(strArr, channel)
 	default:
 		Default(strArr, channel)
 	}

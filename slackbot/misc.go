@@ -19,9 +19,13 @@ func IsRunning(channel string) {
 
 func Help(channel string) {
 	reply := `
-*covid* - current covid data
+*arukereso <product>* - show current lowest price for _product_
 *cons <sensor>* - sensor consumption
+*covid* - current covid data
+*hassio* - show hassio sensors
+*hautils* - check if scraper(hautils) is running
 *hum* - display humidity
+*scraper* - set and display current scrapers status
 *temp* - display temperature
 *turn <sensor> <on/off>* - turn switch on/off`
 	emoji := ":female-office-worker:"
