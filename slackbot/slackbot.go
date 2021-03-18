@@ -49,6 +49,13 @@ func writeToFile() {
 	}
 }
 
+func removeMessage(channel, timestamp string) {
+	_, _, err := ApiUser.DeleteMessage(channel, timestamp)
+	if err != nil {
+		log.Printf("Deleting message failed: %v", err)
+	}
+}
+
 func callbackMux(callback slack.InteractionCallback) {
 	timestamp := callback.Container.MessageTs
 	channel := callback.Channel.GroupConversation.Conversation.ID
@@ -58,12 +65,13 @@ func callbackMux(callback slack.InteractionCallback) {
 	switch block {
 	case "scraper":
 		handleScraperBlock(value)
+		removeMessage(channel, timestamp)
+		if value != "done" {
+			sendScraperMessage(channel)
+		}
 	case "hassio":
 		handleHassioBlock(value, channel)
-	}
-	_, _, err := ApiUser.DeleteMessage(channel, timestamp)
-	if err != nil {
-		log.Printf("Deleting message failed: %v", err)
+		removeMessage(channel, timestamp)
 	}
 }
 

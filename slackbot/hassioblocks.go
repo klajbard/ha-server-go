@@ -25,7 +25,7 @@ func sendHassioMessage(channel string) {
 	covidBtn := slack.NewButtonBlockElement("", "covid", covidBtnText)
 	actionBlock := slack.NewActionBlock("hassio", tempBtn, humBtn, covidBtn)
 
-	_, _, err := ApiBot.PostMessage(channel, slack.MsgOptionBlocks(actionBlock))
+	_, _, err := ApiBot.PostMessage(channel, slack.MsgOptionBlocks(actionBlock), slack.MsgOptionIconEmoji(":desktop_computer:"))
 	if err != nil {
 		log.Printf("Posting message failed: %v", err)
 	}

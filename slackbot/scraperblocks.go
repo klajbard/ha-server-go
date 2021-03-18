@@ -61,14 +61,18 @@ func sendScraperMessage(channel string) {
 	btnBtc := getButton("Btc", conf.Enable.Btc)
 	actionBlock := slack.NewActionBlock("scraper", btnBestbuy, btnStockwatcher, btnMarketplace, btnSteamgifts, btnDht, btnArukereso, btnCovid, btnBumphva, btnFuel, btnNcore, btnFixerio, btnAwscost, btnBtc)
 
-	_, _, err := ApiBot.PostMessage(channel, slack.MsgOptionBlocks(actionBlock))
+	btnText := slack.NewTextBlockObject("plain_text", "~ Done ~", false, false)
+	btn := slack.NewButtonBlockElement("", "done", btnText)
+	btnBlock := slack.NewActionBlock("hassio", btn)
+
+	_, _, err := ApiBot.PostMessage(channel, slack.MsgOptionBlocks(actionBlock, btnBlock), slack.MsgOptionIconEmoji(":construction_worker:"))
 	if err != nil {
 		log.Printf("Posting message failed: %v", err)
 	}
 }
 
 func getButton(text string, value bool) *slack.ButtonBlockElement {
-	displayText := fmt.Sprintf("%s %t", text, value)
+	displayText := fmt.Sprintf("%s: %t", text, value)
 	btnText := slack.NewTextBlockObject("plain_text", displayText, false, false)
 	btn := slack.NewButtonBlockElement("", text, btnText)
 	return btn
