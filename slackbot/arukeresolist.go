@@ -14,6 +14,7 @@ func isValidUrl(url string) bool {
 }
 
 func addItem(item, channel string) {
+	item = strings.Split(strings.Trim(item, "<"), "|")[0]
 	if isValidUrl(item) {
 		config := hass.Get()
 		url := hass.Url{
@@ -28,6 +29,7 @@ func addItem(item, channel string) {
 }
 
 func removeItem(item, channel string) {
+	item = strings.Split(strings.Trim(item, "<>"), "|")[0]
 	config := hass.Get()
 	cleaned := make([]hass.Url, len(config.Arukereso))
 	idx := 0
