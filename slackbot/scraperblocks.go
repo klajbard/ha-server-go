@@ -52,7 +52,7 @@ func sendScraperMessage(channel string) {
 	}
 
 	statusText := slack.NewTextBlockObject("plain_text", status, false, false)
-	statusSection := slack.NewSectionBlock(statusText, nil, nil)
+	statusSection := slack.NewHeaderBlock(statusText, slack.HeaderBlockOptionBlockID("test_block"))
 
 	btnBestbuy := getButton("Bestbuy", conf.Enable.Bestbuy)
 	btnStockwatcher := getButton("Stockwatcher", conf.Enable.Stockwatcher)

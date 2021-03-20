@@ -1,6 +1,7 @@
 package slackbot
 
 import (
+	"fmt"
 	"log"
 	"os/exec"
 
@@ -10,6 +11,36 @@ import (
 func IsRunning() bool {
 	_, err := exec.Command("/bin/systemctl", "is-active", "--quiet", "hautils.service").Output()
 	return err == nil
+}
+
+func StartService(strArr []string, channel string) {
+	reply := "Wrong parameters"
+	emoji := ":female-office-worker:"
+	if len(strArr) >= 2 {
+		service := strArr[1]
+		reply = fmt.Sprintf("%s is started successfully", service)
+		command := fmt.Sprintf("sudo systemctl start %s", service)
+		_, err := exec.Command("/bin/sh", "-c", command).Output()
+		if err != nil {
+			reply = fmt.Sprintf("Something bad happened: %s", err.Error())
+		}
+	}
+	PostMessage(channel, reply, emoji)
+}
+
+func StopService(strArr []string, channel string) {
+	reply := "Wrong parameters"
+	emoji := ":female-office-worker:"
+	if len(strArr) >= 2 {
+		service := strArr[1]
+		reply = fmt.Sprintf("%s is stopped successfully", service)
+		command := fmt.Sprintf("sudo systemctl stop %s", service)
+		_, err := exec.Command("/bin/sh", "-c", command).Output()
+		if err != nil {
+			reply = fmt.Sprintf("Something bad happened: %s", err.Error())
+		}
+	}
+	PostMessage(channel, reply, emoji)
 }
 
 func SendIsRunning(channel string) {
@@ -30,6 +61,7 @@ func Help(channel string) {
 *hassio* - show hassio sensors
 *hautils* - check if scraper(hautils) is running
 *hum* - display humidity
+*start/stop <service> - start/stop systemd service*
 *scraper* - set and display current scrapers status
 *temp* - display temperature
 *turn <sensor> <on/off>* - turn switch on/off`
@@ -40,7 +72,7 @@ func Help(channel string) {
 
 func SendEmpty(channel string) {
 	statusText := slack.NewTextBlockObject("plain_text", "Available commands", false, false)
-	headerSection := slack.NewSectionBlock(statusText, nil, nil)
+	headerSection := slack.NewHeaderBlock(statusText, slack.HeaderBlockOptionBlockID("test_block"))
 
 	btncovid := getSimpleButton("covid")
 	btnhassio := getSimpleButton("hassio")

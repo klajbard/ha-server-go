@@ -157,6 +157,10 @@ func messageMux(strArr []string, channel string) {
 		Temperature(channel)
 	case "turn":
 		TurnSwitch(strArr, channel)
+	case "start":
+		StartService(strArr, channel)
+	case "stop":
+		StopService(strArr, channel)
 	default:
 		SendEmpty(channel)
 	}
