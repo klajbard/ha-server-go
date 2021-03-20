@@ -18,7 +18,6 @@ import (
 
 var ApiBot *slack.Client
 var ApiUser *slack.Client
-var conf *hass.Configuration
 
 func Run() {
 	botToken := os.Getenv("SLACK_BOT_TOKEN")
@@ -35,7 +34,7 @@ func Run() {
 	client.Run()
 }
 
-func writeToFile() {
+func writeToFile(conf *hass.Configuration) {
 	output, err := yaml.Marshal(conf)
 
 	if err != nil {
@@ -79,6 +78,9 @@ func callbackMux(callback slack.InteractionCallback) {
 		}
 		messageMux([]string{value}, channel)
 		removeMessage(channel, timestamp)
+	case "test":
+		log.Println(block)
+		log.Println(value)
 	}
 
 }
@@ -161,6 +163,8 @@ func messageMux(strArr []string, channel string) {
 		StartService(strArr, channel)
 	case "stop":
 		StopService(strArr, channel)
+	case "aklist":
+		AKList(strArr, channel)
 	default:
 		SendEmpty(channel)
 	}

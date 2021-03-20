@@ -9,6 +9,8 @@ import (
 )
 
 func handleScraperBlock(value string) {
+	conf := hass.Get()
+
 	switch value {
 	case "Bestbuy":
 		conf.Enable.Bestbuy = !conf.Enable.Bestbuy
@@ -39,13 +41,13 @@ func handleScraperBlock(value string) {
 	}
 
 	if conf != nil {
-		writeToFile()
+		writeToFile(conf)
 	}
 }
 
 func sendScraperMessage(channel string) {
 	status := ":red_circle: Hautils is not running"
-	conf = hass.Get()
+	conf := hass.Get()
 
 	if IsRunning() {
 		status = ":large_green_circle: Hautils is running"
