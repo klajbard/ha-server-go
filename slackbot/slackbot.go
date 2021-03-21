@@ -139,6 +139,8 @@ func eventMux(eventsAPIEvent slackevents.EventsAPIEvent) {
 
 func messageMux(strArr []string, channel string) {
 	switch strArr[0] {
+	case "aklist":
+		AKList(strArr, channel)
 	case "arukereso":
 		Arukereso(strArr, channel)
 	case "cons":
@@ -153,6 +155,8 @@ func messageMux(strArr []string, channel string) {
 		Help(channel)
 	case "hum":
 		Humidity(channel)
+	case "notif":
+		SetSilence(strArr, channel)
 	case "scraper":
 		sendScraperMessage(channel)
 	case "temp":
@@ -163,8 +167,6 @@ func messageMux(strArr []string, channel string) {
 		StartService(strArr, channel)
 	case "stop":
 		StopService(strArr, channel)
-	case "aklist":
-		AKList(strArr, channel)
 	default:
 		SendEmpty(channel)
 	}

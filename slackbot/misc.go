@@ -55,11 +55,13 @@ func SendIsRunning(channel string) {
 
 func Help(channel string) {
 	reply := `
+*aklist <add/rm> <url>* - add/remove url to arukereso query list
 *arukereso <product>* - show current lowest price for _product_
 *cons <sensor>* - sensor consumption
 *covid* - current covid data
 *hassio* - show hassio sensors
 *hautils* - check if scraper(hautils) is running
+*notif <on/off>* - sets whether hautils should notify via slack
 *hum* - display humidity
 *start/stop <service> - start/stop systemd service*
 *scraper* - set and display current scrapers status
