@@ -1,10 +1,15 @@
 package config
 
 import (
+	"encoding/json"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"log"
+	"net/http"
+	"os"
 
+	"../types"
 	"gopkg.in/yaml.v2"
 )
 
@@ -33,14 +38,29 @@ type SensorConfig struct {
 	Id   string `yaml:"id"`
 }
 
-func (c *Configuration) GetConf() *Configuration {
-	cfg := flag.String("cfg", "config.yaml", "config file path")
-	flag.Parse()
+var cfg = flag.String("cfg", "config.yaml", "config file path")
 
-	conf, err := ioutil.ReadFile(*cfg)
+func (c *Configuration) GetConf() *Configuration {
+	var conf []byte
+	resp, err := http.Get(fmt.Sprintf("https://%s@cdn.klajbar.com/conf/ha-server-config.yaml", os.Getenv("CDN_CRED")))
 	if err != nil {
 		log.Println(err)
+		flag.Parse()
+		conf, err = ioutil.ReadFile(*cfg)
+		if err != nil {
+			log.Println(err)
+		}
+	} else {
+		respBody, _ := ioutil.ReadAll(resp.Body)
+		configData := types.AWSResponse{}
+
+		err = json.Unmarshal([]byte(string(respBody)), &configData)
+		if err != nil {
+			log.Fatal(err)
+		}
+		conf = configData.Body.Data
 	}
+
 	if err := yaml.Unmarshal(conf, c); err != nil {
 		log.Println(err)
 	}
