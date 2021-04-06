@@ -8,8 +8,8 @@ import (
 	"regexp"
 	"strings"
 
-	"../config"
-	"../hass"
+	"github.com/klajbard/ha-server-go/config"
+	"github.com/klajbard/ha-server-go/hass"
 	"github.com/slack-go/slack"
 	"github.com/slack-go/slack/slackevents"
 	"github.com/slack-go/slack/socketmode"

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"../hass"
+	"github.com/klajbard/ha-server-go/hass"
 	"github.com/slack-go/slack"
 )
 

@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 
-	"../config"
+	"github.com/klajbard/ha-server-go/config"
 	"gopkg.in/yaml.v2"
 )
 

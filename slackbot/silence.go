@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"strings"
 
-	"../hass"
+	"github.com/klajbard/ha-server-go/hass"
 )
 
 func SetSilence(strArr []string, channel string) {

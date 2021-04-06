@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
-	"../config"
-	"../consumption"
-	"../types"
+	"github.com/klajbard/ha-server-go/config"
+	"github.com/klajbard/ha-server-go/consumption"
+	"github.com/klajbard/ha-server-go/types"
 )
 
 func TurnSwitch(strArr []string, channel string) {

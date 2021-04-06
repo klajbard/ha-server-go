@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"../config"
-	"../types"
+	"github.com/klajbard/ha-server-go/config"
+	"github.com/klajbard/ha-server-go/types"
 	"github.com/PuerkitoBio/goquery"
 )
 

@@ -4,10 +4,10 @@ import (
 	"log"
 	"net/http"
 
-	"./consumption"
-	"./slackbot"
 	"github.com/joho/godotenv"
 	"github.com/julienschmidt/httprouter"
+	"github.com/klajbard/ha-server-go/consumption"
+	"github.com/klajbard/ha-server-go/slackbot"
 )
 
 func init() {

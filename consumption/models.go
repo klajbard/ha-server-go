@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	"../config"
+	"github.com/klajbard/ha-server-go/config"
 	"gopkg.in/mgo.v2/bson"
 )
 
