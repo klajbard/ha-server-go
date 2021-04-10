@@ -1,11 +1,6 @@
 package consumption
 
 import (
-	"encoding/json"
-	"errors"
-	"fmt"
-	"io"
-
 	"github.com/klajbard/ha-server-go/config"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -38,20 +33,4 @@ func OneCons(d string, date string) Consumption {
 		}
 	}
 	return cons
-}
-
-func UpdateCons(body io.Reader) (Consumption, error) {
-	cons := Consumption{}
-	json.NewDecoder(body).Decode(&cons)
-	fmt.Println(cons)
-
-	if cons.Device == "" || cons.Date == "" || cons.Watt == 0 {
-		return cons, errors.New("400. Bad request. All fields must be complete.")
-	}
-
-	_, err := config.Consumptions.Upsert(bson.M{"device": cons.Device, "date": cons.Date}, &cons)
-	if err != nil {
-		return cons, err
-	}
-	return cons, nil
 }
