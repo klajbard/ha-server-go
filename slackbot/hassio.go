@@ -89,7 +89,7 @@ func getSensorData(sensorType string) []types.SensorValue {
 
 func getHassioData(sensor string) string {
 	sensorData := &types.SensorData{}
-	resp := queryHassio("http://192.168.1.27:8123/api/states/"+sensor, "GET", nil)
+	resp := queryHassio("http://192.168.1.216:8123/api/states/"+sensor, "GET", nil)
 
 	defer resp.Body.Close()
 
@@ -108,7 +108,7 @@ func getHassioData(sensor string) string {
 
 func setHassioService(sensor, domain, service string) bool {
 	payload := fmt.Sprintf(`{"entity_id":"%s"}`, sensor)
-	link := "http://192.168.1.27:8123/api/services/" + domain + "/" + service
+	link := "http://192.168.1.216:8123/api/services/" + domain + "/" + service
 
 	resp := queryHassio(link, "POST", strings.NewReader(payload))
 
