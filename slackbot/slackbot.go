@@ -62,6 +62,9 @@ func callbackMux(callback slack.InteractionCallback) {
 	block := callback.ActionCallback.BlockActions[0].BlockID
 
 	switch block {
+	case "akquery":
+		if value == "restart"
+		restartAkQuery()
 	case "scraper":
 		handleScraperBlock(value)
 		removeMessage(channel, timestamp)
@@ -133,7 +136,28 @@ func eventMux(eventsAPIEvent slackevents.EventsAPIEvent) {
 					log.Printf("Deleting message failed: %v", err)
 				}
 			}
+			if strings.Contains(ev.Text, "Query finished") {
+				sendAkQueryMessage(ev.Channel)
+			}
 		}
+	}
+}
+
+func sendAkQueryMessage(channel string) {
+	restartBtnText := slack.NewTextBlockObject("plain_text", "Restart", false, false)
+	restartBtn := slack.NewButtonBlockElement("", "restart", restartBtnText)
+	actionBlock := slack.NewActionBlock("akquery", restartBtn)
+
+	_, _, err := ApiBot.PostMessage(channel, slack.MsgOptionBlocks(actionBlock), slack.MsgOptionIconEmoji(":desktop_computer:"))
+	if err != nil {
+		log.Printf("Posting message failed: %v", err)
+	}
+}
+
+func restartAkQuery() {
+	_, err := exec.Command("/bin/systemctl", "restart", "akgoquery.service").Output()
+	if err != nil {
+		fmt.Println(err)
 	}
 }
 
