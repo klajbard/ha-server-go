@@ -66,6 +66,7 @@ func callbackMux(callback slack.InteractionCallback) {
 	case "akquery":
 		if value == "restart" {
 			restartAkQuery()
+			removeMessage(channel, timestamp)
 		}
 	case "scraper":
 		handleScraperBlock(value)
