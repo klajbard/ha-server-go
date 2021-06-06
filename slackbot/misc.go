@@ -85,6 +85,7 @@ func SendIsRunning(channel string) {
 
 func Help(channel string) {
 	reply := `
+*akgostatus* - Status of the akgoquery systemd status
 *aklist <add/rm> <url>* - add/remove url to arukereso query list
 *arukereso <product>* - show current lowest price for _product_
 *cons <sensor>* - sensor consumption
