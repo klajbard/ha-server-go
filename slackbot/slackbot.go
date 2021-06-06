@@ -168,6 +168,8 @@ func messageMux(strArr []string, channel string) {
 	switch strArr[0] {
 	case "aklist":
 		AKList(strArr, channel)
+	case "akgostatus":
+		SendAkGoQueryStatus(channel)
 	case "arukereso":
 		Arukereso(strArr, channel)
 	case "cons":

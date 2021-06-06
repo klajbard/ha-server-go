@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"os/exec"
+	"regexp"
+	"strings"
 
 	"github.com/slack-go/slack"
 )
@@ -11,6 +13,23 @@ import (
 func IsRunning() bool {
 	_, err := exec.Command("/bin/systemctl", "is-active", "--quiet", "hautils.service").Output()
 	return err == nil
+}
+
+func AkGoQueryStatus() (string, error) {
+	output, err := exec.Command("/usr/bin/journalctl", "-au", "akgoquery.service", "-n", "1").Output()
+	if err != nil {
+		return "", err
+	}
+	outStr := string(output)
+	if strings.Contains(outStr, "Succeeded.") {
+		return "Query job is successfully done.", nil
+	} else if strings.Contains(outStr, "Querying...") {
+		r := regexp.MustCompile(`\d+/\d+`)
+		matches := r.FindAllString(outStr, -1)
+		return fmt.Sprintf("Query job is running %s", matches[0]), nil
+	} else {
+		return "Query job failed", nil
+	}
 }
 
 func StartService(strArr []string, channel string) {
@@ -41,6 +60,17 @@ func StopService(strArr []string, channel string) {
 		}
 	}
 	PostMessage(channel, reply, emoji)
+}
+
+func SendAkGoQueryStatus(channel string) {
+	output, err := AkGoQueryStatus()
+	emoji := ":female-office-worker:"
+
+	if err != nil {
+		fmt.Println(err)
+	} else {
+		PostMessage(channel, output, emoji)
+	}
 }
 
 func SendIsRunning(channel string) {
