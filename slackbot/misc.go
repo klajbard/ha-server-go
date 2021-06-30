@@ -38,7 +38,7 @@ func StartService(strArr []string, channel string) {
 	if len(strArr) >= 2 {
 		service := strArr[1]
 		reply = fmt.Sprintf("%s is started successfully", service)
-		command := fmt.Sprintf("sudo systemctl start %s", service[1:])
+		command := fmt.Sprintf("sudo systemctl start %s", service)
 		_, err := exec.Command("/bin/sh", "-c", command).Output()
 		if err != nil {
 			reply = fmt.Sprintf("Something bad happened: %s", err.Error())
