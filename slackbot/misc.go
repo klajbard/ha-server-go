@@ -10,8 +10,8 @@ import (
 	"github.com/slack-go/slack"
 )
 
-func IsRunning() bool {
-	_, err := exec.Command("/bin/systemctl", "is-active", "--quiet", "hautils.service").Output()
+func IsRunning(service string) bool {
+	_, err := exec.Command("/bin/systemctl", "is-active", "--quiet", fmt.Sprintf("%s.service", service)).Output()
 	return err == nil
 }
 
@@ -38,7 +38,7 @@ func StartService(strArr []string, channel string) {
 	if len(strArr) >= 2 {
 		service := strArr[1]
 		reply = fmt.Sprintf("%s is started successfully", service)
-		command := fmt.Sprintf("sudo systemctl start %s", service)
+		command := fmt.Sprintf("sudo systemctl start %s", service[1:])
 		_, err := exec.Command("/bin/sh", "-c", command).Output()
 		if err != nil {
 			reply = fmt.Sprintf("Something bad happened: %s", err.Error())
@@ -73,11 +73,15 @@ func SendAkGoQueryStatus(channel string) {
 	}
 }
 
-func SendIsRunning(channel string) {
-	reply := "Ha utils is running"
+func StatusService(strArr []string, channel string) {
+	reply := "Wrong parameters"
 	emoji := ":female-office-worker:"
-	if !IsRunning() {
-		reply = "Ha utils is not running"
+	if len(strArr) >= 2 {
+		service := strArr[1]
+		reply = fmt.Sprintf("%s is running", service)
+		if !IsRunning(service) {
+			reply = fmt.Sprintf("%s is not running", service)
+		}
 	}
 
 	PostMessage(channel, reply, emoji)
@@ -91,9 +95,9 @@ func Help(channel string) {
 *cons <sensor>* - sensor consumption
 *covid* - current covid data
 *hassio* - show hassio sensors
-*hautils* - check if scraper(hautils) is running
 *notif <on/off>* - sets whether hautils should notify via slack
 *hum* - display humidity
+*status <service>* - check if systemd is running
 *start/stop <service> - start/stop systemd service*
 *scraper* - set and display current scrapers status
 *temp* - display temperature

@@ -178,8 +178,6 @@ func messageMux(strArr []string, channel string) {
 		Covid(channel)
 	case "hassio":
 		sendHassioMessage(channel)
-	case "hautils":
-		SendIsRunning(channel)
 	case "help":
 		Help(channel)
 	case "hum":
@@ -192,6 +190,8 @@ func messageMux(strArr []string, channel string) {
 		Temperature(channel)
 	case "turn":
 		TurnSwitch(strArr, channel)
+	case "status":
+		StatusService(strArr, channel)
 	case "start":
 		StartService(strArr, channel)
 	case "stop":
