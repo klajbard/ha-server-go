@@ -49,7 +49,7 @@ func sendScraperMessage(channel string) {
 	status := ":red_circle: Hautils is not running"
 	conf := hass.Get()
 
-	if IsRunning() {
+	if IsRunning("hautils") {
 		status = ":large_green_circle: Hautils is running"
 	}
 
